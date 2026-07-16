@@ -127,12 +127,20 @@ func HandleCashDiscount(w http.ResponseWriter, r *http.Request) {
 
 type CashDiscountPostRequest struct {
 	TransID    int         `json:"TransID"`
-	DCP_No     interface{} `json:"DCP_No"`
-	DCP_DATE   string      `json:"DCP_DATE"`
 	SoldToCode string      `json:"SoldToCode"`
 	SoldTo     string      `json:"SoldTo"`
+	DCP_No     interface{} `json:"DCP_No"`
+	DCP_DATE   string      `json:"DCP_DATE"`
+	Prod_Desc  string      `json:"Prod_Desc"`
+	Quantity   interface{} `json:"Quantity"`
+	Due_Date   string      `json:"Due_Date"`
+	RectDate   string      `json:"RectDate"`
+	CD         interface{} `json:"CD"`
+	EPI        interface{} `json:"EPI"`
+	EPI_Days   int         `json:"EPI_Days"`
 	CD_Amount  interface{} `json:"CD_Amount"`
 	EPI_Amount interface{} `json:"EPI_Amount"`
+	Balance    interface{} `json:"Balance"`
 	Net_Amount interface{} `json:"Net_Amount"`
 }
 
@@ -174,21 +182,38 @@ func HandlePostCashDiscount(w http.ResponseWriter, r *http.Request) {
 		dcpNoStr = strconv.Itoa(v)
 	}
 
+	qty := parseInterfaceFloat(req.Quantity)
+	cdRate := parseInterfaceFloat(req.CD)
+	epiRate := parseInterfaceFloat(req.EPI)
 	cdAmt := parseInterfaceFloat(req.CD_Amount)
 	epiAmt := parseInterfaceFloat(req.EPI_Amount)
+	balAmt := parseInterfaceFloat(req.Balance)
 	netAmt := parseInterfaceFloat(req.Net_Amount)
 
-	dcpDate, _ := time.Parse("2006-01-02 15:04:05.000000000", req.DCP_DATE)
-	if dcpDate.IsZero() {
-		dcpDate, _ = time.Parse(time.RFC3339, req.DCP_DATE)
+	parseDate := func(d string) time.Time {
+		if d == "" {
+			return time.Time{}
+		}
+		t, _ := time.Parse("2006-01-02 15:04:05.000000000", d)
+		if t.IsZero() {
+			t, _ = time.Parse(time.RFC3339, d)
+		}
+		if t.IsZero() {
+			t, _ = time.Parse("2006-01-02", d)
+		}
+		if t.IsZero() {
+			// Jan 02, 2006
+			t, _ = time.Parse("02 Jan 2006", d)
+		}
+		if t.IsZero() {
+			t, _ = time.Parse("02-Jan-06", d)
+		}
+		return t
 	}
-	if dcpDate.IsZero() {
-		dcpDate, _ = time.Parse("2006-01-02", req.DCP_DATE)
-	}
-	if dcpDate.IsZero() {
-		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "invalid DCP_DATE format"})
-		return
-	}
+
+	dcpDate := parseDate(req.DCP_DATE)
+	dueDate := parseDate(req.Due_Date)
+	rectDate := parseDate(req.RectDate)
 
 	db, err := GetDB()
 	if err != nil {
@@ -196,8 +221,8 @@ func HandlePostCashDiscount(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	query := `CALL "RAGHAV_LIVE"."POST_CASH_DISCOUNT"(?, ?, ?, ?, ?, ?, ?, ?)`
-	_, err = db.Exec(query, req.TransID, dcpNoStr, dcpDate, req.SoldToCode, req.SoldTo, cdAmt, epiAmt, netAmt)
+	query := `CALL "RAGHAV_LIVE"."POST_CASH_DISCOUNT"(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+	_, err = db.Exec(query, req.TransID, req.SoldToCode, req.SoldTo, dcpNoStr, dcpDate, req.Prod_Desc, qty, dueDate, rectDate, cdRate, epiRate, req.EPI_Days, cdAmt, epiAmt, balAmt, netAmt)
 	if err != nil {
 		writeJSON(w, http.StatusInternalServerError, map[string]string{"error": "query execution error: " + err.Error()})
 		return

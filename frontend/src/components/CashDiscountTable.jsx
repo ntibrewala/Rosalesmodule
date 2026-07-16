@@ -10,12 +10,20 @@ export default function CashDiscountTable({ data, total, limit, offset, loading,
     try {
       await postCashDiscount({
         TransID: row.TransID || 0,
-        DCP_No: row.DCP_No || '',
-        DCP_DATE: row.DCP_DATE || '',
         SoldToCode: row.SoldToCode || '',
         SoldTo: row.SoldTo || '',
+        DCP_No: row.DCP_No || '',
+        DCP_DATE: row.DCP_DATE || '',
+        Prod_Desc: row.Prod_Desc || '',
+        Quantity: row.Quantity || 0,
+        Due_Date: row.Due_Date || '',
+        RectDate: row.RectDate || '',
+        CD: row.CD || 0,
+        EPI: row.EPI || 0,
+        EPI_Days: row.EPI_Days || 0,
         CD_Amount: row.CD_Amount || 0,
         EPI_Amount: row.EPI_Amount || 0,
+        Balance: row.Balance || 0,
         Net_Amount: row.Net_Amount || 0
       })
       alert(`Successfully posted for ${row.SoldTo}`)
@@ -43,7 +51,22 @@ export default function CashDiscountTable({ data, total, limit, offset, loading,
   }
 
   // Format numbers to 2 decimal places if applicable
-  const formatCell = (val) => {
+  const formatCell = (key, val) => {
+    if (val === null || val === undefined) return ''
+    
+    // Check if it's a date column
+    if (['DCP_DATE', 'Due_Date', 'RectDate'].includes(key)) {
+      if (!val) return ''
+      try {
+        const d = new Date(val)
+        if (!isNaN(d)) {
+          return d.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })
+        }
+      } catch (e) {
+        return val
+      }
+    }
+
     if (typeof val === 'number') {
       return val.toLocaleString('en-IN', { maximumFractionDigits: 2, minimumFractionDigits: 2 })
     }
@@ -52,11 +75,19 @@ export default function CashDiscountTable({ data, total, limit, offset, loading,
 
   const displayCols = [
     { key: 'SoldTo', label: 'Customer Name' },
-    { key: 'DCP_DATE', label: 'Date' },
     { key: 'DCP_No', label: 'DCPI Number' },
-    { key: 'CD_Amount', label: 'Cash Discount' },
-    { key: 'EPI_Amount', label: 'EPI' },
-    { key: 'Net_Amount', label: 'Net Value' }
+    { key: 'DCP_DATE', label: 'Date' },
+    { key: 'Prod_Desc', label: 'Product Desc' },
+    { key: 'Quantity', label: 'Quantity' },
+    { key: 'Due_Date', label: 'Due Date' },
+    { key: 'RectDate', label: 'Rect Date' },
+    { key: 'CD', label: 'CD Rate' },
+    { key: 'EPI', label: 'EPI Rate' },
+    { key: 'EPI_Days', label: 'EPI Days' },
+    { key: 'CD_Amount', label: 'CD Amount' },
+    { key: 'EPI_Amount', label: 'EPI Amount' },
+    { key: 'Balance', label: 'Balance' },
+    { key: 'Net_Amount', label: 'Net Amount' }
   ]
 
   return (
@@ -81,7 +112,7 @@ export default function CashDiscountTable({ data, total, limit, offset, loading,
               return (
                 <tr key={rowIdx}>
                   {displayCols.map((col, colIdx) => (
-                    <td key={colIdx}>{formatCell(row[col.key])}</td>
+                    <td key={colIdx}>{formatCell(col.key, row[col.key])}</td>
                   ))}
                   <td>
                     <button 
