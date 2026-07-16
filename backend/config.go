@@ -25,8 +25,8 @@ func LoadConfig() {
 
 	host := getEnv("HANA_HOST", "10.10.0.113")
 	port := getEnv("HANA_PORT", "30015")
-	user := getEnv("HANA_USER", "HANA_RW")
-	pass := getEnv("HANA_PASS", "Whybhav@1234")
+	user := getEnv("HANA_USER", "HANA_RO")
+	pass := getEnv("HANA_PASS", "")
 
 	// Build DSN: hdb://USER:PASS@HOST:PORT?defaultSchema=RAGHAV_LIVE
 	AppConfig.HanaDSN = fmt.Sprintf("hdb://%s:%s@%s:%s?defaultSchema=RAGHAV_LIVE",
