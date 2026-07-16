@@ -1,6 +1,30 @@
-import React from 'react'
+import React, { useState } from 'react'
+import { postCashDiscount } from '../api'
 
-export default function CashDiscountTable({ data, columns, total, limit, offset, loading, onRefresh }) {
+export default function CashDiscountTable({ data, total, limit, offset, loading, onRefresh }) {
+  const [postingRows, setPostingRows] = useState({})
+
+  const handlePost = async (row) => {
+    const rowId = row.TransID || row.DCP_No
+    setPostingRows(prev => ({ ...prev, [rowId]: true }))
+    try {
+      await postCashDiscount({
+        TransID: row.TransID || 0,
+        DCP_No: row.DCP_No || '',
+        DCP_DATE: row.DCP_DATE || '',
+        SoldToCode: row.SoldToCode || '',
+        SoldTo: row.SoldTo || '',
+        CD_Amount: row.CD_Amount || 0,
+        EPI_Amount: row.EPI_Amount || 0,
+        Net_Amount: row.Net_Amount || 0
+      })
+      alert(`Successfully posted for ${row.SoldTo}`)
+    } catch (err) {
+      alert(`Failed to post: ${err.response?.data?.error || err.message}`)
+    } finally {
+      setPostingRows(prev => ({ ...prev, [rowId]: false }))
+    }
+  }
   if (loading) {
     return (
       <div className="table-container" style={{ textAlign: 'center', padding: '3rem' }}>
@@ -26,6 +50,15 @@ export default function CashDiscountTable({ data, columns, total, limit, offset,
     return val
   }
 
+  const displayCols = [
+    { key: 'SoldTo', label: 'Customer Name' },
+    { key: 'DCP_DATE', label: 'Date' },
+    { key: 'DCP_No', label: 'DCPI Number' },
+    { key: 'CD_Amount', label: 'Cash Discount' },
+    { key: 'EPI_Amount', label: 'EPI' },
+    { key: 'Net_Amount', label: 'Net Value' }
+  ]
+
   return (
     <div className="table-container">
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
@@ -36,19 +69,33 @@ export default function CashDiscountTable({ data, columns, total, limit, offset,
         <table className="data-table">
           <thead>
             <tr>
-              {columns.map((col, idx) => (
-                <th key={idx}>{col}</th>
+              {displayCols.map((col, idx) => (
+                <th key={idx}>{col.label}</th>
               ))}
+              <th>Action</th>
             </tr>
           </thead>
           <tbody>
-            {data.map((row, rowIdx) => (
-              <tr key={rowIdx}>
-                {columns.map((col, colIdx) => (
-                  <td key={colIdx}>{formatCell(row[col])}</td>
-                ))}
-              </tr>
-            ))}
+            {data.map((row, rowIdx) => {
+              const rowId = row.TransID || row.DCP_No
+              return (
+                <tr key={rowIdx}>
+                  {displayCols.map((col, colIdx) => (
+                    <td key={colIdx}>{formatCell(row[col.key])}</td>
+                  ))}
+                  <td>
+                    <button 
+                      className="btn btn-primary"
+                      onClick={() => handlePost(row)}
+                      disabled={postingRows[rowId]}
+                      style={{ padding: '0.25rem 0.5rem', fontSize: '0.875rem' }}
+                    >
+                      {postingRows[rowId] ? 'Posting...' : 'Post'}
+                    </button>
+                  </td>
+                </tr>
+              )
+            })}
           </tbody>
         </table>
       </div>

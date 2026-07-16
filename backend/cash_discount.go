@@ -1,6 +1,8 @@
 package main
 
 import (
+	"encoding/json"
+	"fmt"
 	"math/big"
 	"net/http"
 	"strconv"
@@ -121,4 +123,85 @@ func HandleCashDiscount(w http.ResponseWriter, r *http.Request) {
 		"limit":   limit,
 		"offset":  offset,
 	})
+}
+
+type CashDiscountPostRequest struct {
+	TransID    int         `json:"TransID"`
+	DCP_No     interface{} `json:"DCP_No"`
+	DCP_DATE   string      `json:"DCP_DATE"`
+	SoldToCode string      `json:"SoldToCode"`
+	SoldTo     string      `json:"SoldTo"`
+	CD_Amount  interface{} `json:"CD_Amount"`
+	EPI_Amount interface{} `json:"EPI_Amount"`
+	Net_Amount interface{} `json:"Net_Amount"`
+}
+
+func parseInterfaceFloat(v interface{}) float64 {
+	switch val := v.(type) {
+	case float64:
+		return val
+	case float32:
+		return float64(val)
+	case int:
+		return float64(val)
+	case string:
+		f, _ := strconv.ParseFloat(val, 64)
+		return f
+	default:
+		return 0
+	}
+}
+
+func HandlePostCashDiscount(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		writeJSON(w, http.StatusMethodNotAllowed, map[string]string{"error": "Method not allowed"})
+		return
+	}
+
+	var req CashDiscountPostRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "invalid request body: " + err.Error()})
+		return
+	}
+
+	var dcpNoStr string
+	switch v := req.DCP_No.(type) {
+	case string:
+		dcpNoStr = v
+	case float64:
+		dcpNoStr = fmt.Sprintf("%.0f", v)
+	case int:
+		dcpNoStr = strconv.Itoa(v)
+	}
+
+	cdAmt := parseInterfaceFloat(req.CD_Amount)
+	epiAmt := parseInterfaceFloat(req.EPI_Amount)
+	netAmt := parseInterfaceFloat(req.Net_Amount)
+
+	dcpDate, _ := time.Parse("2006-01-02 15:04:05.000000000", req.DCP_DATE)
+	if dcpDate.IsZero() {
+		dcpDate, _ = time.Parse(time.RFC3339, req.DCP_DATE)
+	}
+	if dcpDate.IsZero() {
+		dcpDate, _ = time.Parse("2006-01-02", req.DCP_DATE)
+	}
+	if dcpDate.IsZero() {
+		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "invalid DCP_DATE format"})
+		return
+	}
+
+	db, err := GetDB()
+	if err != nil {
+		writeJSON(w, http.StatusInternalServerError, map[string]string{"error": "db connection error: " + err.Error()})
+		return
+	}
+
+	query := `CALL "RAGHAV_LIVE"."POST_CASH_DISCOUNT"(?, ?, ?, ?, ?, ?, ?, ?)`
+	_, err = db.Exec(query, req.TransID, dcpNoStr, dcpDate, req.SoldToCode, req.SoldTo, cdAmt, epiAmt, netAmt)
+	if err != nil {
+		writeJSON(w, http.StatusInternalServerError, map[string]string{"error": "query execution error: " + err.Error()})
+		return
+	}
+
+	writeJSON(w, http.StatusOK, map[string]string{"message": "success"})
 }

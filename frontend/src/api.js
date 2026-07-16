@@ -46,5 +46,6 @@ export const getDiscountPayable = (params) => api.get('/discount/payable', { par
 export const postDiscountPayable = (data) => api.post('/discount/payable/post', data)
 export const getInterestPosted = () => api.get('/interest/posted')
 export const getCashDiscount = (params) => api.get('/cash-discount', { params })
+export const postCashDiscount = (data) => api.post('/cash-discount/post', data)
 
 export default api
