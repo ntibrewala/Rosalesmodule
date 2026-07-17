@@ -39,7 +39,17 @@ export default function CashDiscountTable({ data, total, limit, offset, loading,
   }
 
   const unhiddenData = (data || []).filter(row => !hiddenRows[row.TransID || row.DCP_No])
-  const visibleData = showZeroCD ? unhiddenData : unhiddenData.filter(row => (row.CD_Amount || 0) !== 0)
+  let visibleData = showZeroCD ? unhiddenData : unhiddenData.filter(row => (row.CD_Amount || 0) !== 0)
+
+  visibleData = [...visibleData].sort((a, b) => {
+    const nameA = (a.SoldTo || '').toLowerCase()
+    const nameB = (b.SoldTo || '').toLowerCase()
+    if (nameA < nameB) return -1
+    if (nameA > nameB) return 1
+    const dateA = new Date(a.DCP_DATE || 0)
+    const dateB = new Date(b.DCP_DATE || 0)
+    return dateA - dateB
+  })
 
   if (loading) {
     return (
@@ -92,32 +102,15 @@ export default function CashDiscountTable({ data, total, limit, offset, loading,
         <table className="data-table">
           <thead>
             <tr>
+              <th>SoldTo</th>
               <th>DCP No</th>
               <th>DCP Date</th>
-              <th>Order No</th>
-              <th>Order Date</th>
-              <th>Trans ID</th>
-              <th>Sold To Code</th>
-              <th>Sold To Name</th>
-              <th>Division</th>
-              <th>Product</th>
               <th>Prod Desc</th>
               <th>Quantity</th>
-              <th>Truck No</th>
-              <th>Transport Name</th>
-              <th>Amount</th>
-              <th>Tax</th>
-              <th>Total Amt</th>
-              <th>Retail Invoice</th>
-              <th>Ship To</th>
-              <th>Ship To Name</th>
-              <th>CD Applicable</th>
               <th>Due Date</th>
-              <th>New Due Date</th>
               <th>Rect Date</th>
               <th>CD Rate</th>
               <th>EPI Rate</th>
-              <th>Grace Amt</th>
               <th>EPI Days</th>
               <th>CD Amount</th>
               <th>EPI Amount</th>
@@ -135,32 +128,15 @@ export default function CashDiscountTable({ data, total, limit, offset, loading,
               
               return (
                 <tr key={idx}>
+                  <td>{row.SoldTo}</td>
                   <td>{row.DCP_No}</td>
                   <td>{formatDate(row.DCP_DATE)}</td>
-                  <td>{row.Order_No}</td>
-                  <td>{formatDate(row.Order_Date)}</td>
-                  <td>{row.TransID}</td>
-                  <td>{row.SoldToCode}</td>
-                  <td>{row.SoldTo}</td>
-                  <td>{row.Division}</td>
-                  <td>{row.Product}</td>
                   <td>{row.Prod_Desc}</td>
                   <td style={{ textAlign: 'right' }}>{formatNumber(row.Quantity)}</td>
-                  <td>{row.Truck_No}</td>
-                  <td>{row.Transport_Name}</td>
-                  <td style={{ textAlign: 'right' }}>{formatNumber(row.Amount)}</td>
-                  <td style={{ textAlign: 'right' }}>{formatNumber(row.Tax)}</td>
-                  <td style={{ textAlign: 'right' }}>{formatNumber(row.TotalAmt)}</td>
-                  <td>{row.Retail_Invoice}</td>
-                  <td>{row.ShipTo}</td>
-                  <td>{row.ShipTo_Name}</td>
-                  <td style={{ textAlign: 'center' }}>{row.CD_Applicable}</td>
                   <td>{formatDate(row.Due_Date)}</td>
-                  <td>{formatDate(row.New_Due_Date)}</td>
                   <td>{formatDate(row.RectDate)}</td>
                   <td style={{ textAlign: 'right' }}>{formatNumber(row.CD)}</td>
                   <td style={{ textAlign: 'right' }}>{formatNumber(row.EPI)}</td>
-                  <td style={{ textAlign: 'right' }}>{formatNumber(row.Grace_Amount)}</td>
                   <td style={{ textAlign: 'right' }}>{row.EPI_Days}</td>
                   <td style={{ textAlign: 'right' }}>{formatNumber(row.CD_Amount)}</td>
                   <td style={{ textAlign: 'right' }}>{formatNumber(row.EPI_Amount)}</td>
