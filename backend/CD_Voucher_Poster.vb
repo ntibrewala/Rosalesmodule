@@ -23,7 +23,7 @@ Module CD_Voucher_Poster
     Private Const SL_PASS As String = "bppl@123"
 
     ' --- Business Logic Configuration ---
-    Private Const ATTACHMENT_FOLDER As String = "D:\SAP\Attachments2\Raghav_live"
+    Private Const ATTACHMENT_FOLDER As String = "D:\SAP Attachments Folder\Raghav_live"
     Private Const GL_ACCOUNT As String = "410004"
     Private Const SAC_ENTRY As Integer = -433
     Private Const TAX_CGST As String = "CG+SG@18"
@@ -197,11 +197,20 @@ Module CD_Voucher_Poster
 
     Private Async Function UploadAttachmentAsync(filePath As String) As Task(Of Integer?)
         Console.WriteLine("--- Uploading Attachment to SAP ---")
-        Using form As New MultipartFormDataContent()
+        
+        Dim boundary As String = "---------------------------" & DateTime.Now.Ticks.ToString("x")
+        Using form As New MultipartFormDataContent(boundary)
+            form.Headers.Remove("Content-Type")
+            form.Headers.TryAddWithoutValidation("Content-Type", "multipart/form-data; boundary=" & boundary)
+
             Dim fileBytes As Byte() = File.ReadAllBytes(filePath)
             Dim fileContent As New ByteArrayContent(fileBytes)
+            
+            fileContent.Headers.Remove("Content-Disposition")
+            fileContent.Headers.TryAddWithoutValidation("Content-Disposition", $"form-data; name=""file""; filename=""{Path.GetFileName(filePath)}""")
             fileContent.Headers.ContentType = MediaTypeHeaderValue.Parse("text/csv")
-            form.Add(fileContent, "file", Path.GetFileName(filePath))
+            
+            form.Add(fileContent)
 
             Dim request As New HttpRequestMessage(HttpMethod.Post, SL_URL & "/Attachments2")
             request.Headers.Add("Cookie", $"{b1SessionCookie}; {routeIdCookie}")
@@ -279,9 +288,13 @@ Module CD_Voucher_Poster
             query = $"UPDATE ""{HANA_SCHEMA}"".""CASH_DISCOUNT"" SET ""Error_Message"" = '{errorMsg}' WHERE ""TransID"" = {transId}"
         End If
 
-        Using cmd As New HanaCommand(query, conn)
-            cmd.ExecuteNonQuery()
-        End Using
+        Try
+            Using cmd As New HanaCommand(query, conn)
+                cmd.ExecuteNonQuery()
+            End Using
+        Catch ex As Exception
+            Console.WriteLine($"Failed to update HANA DB for TransID {transId}: " & ex.Message)
+        End Try
     End Sub
 
 End Module
