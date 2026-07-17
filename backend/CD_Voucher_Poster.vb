@@ -110,7 +110,15 @@ Module CD_Voucher_Poster
         Using conn As New HanaConnection(HANA_CONN_STRING)
             conn.Open()
 
-            ' Fetch Unprocessed Rows
+            ' 1. Automatically update zero CD_Amount rows to '0' so they don't sit as 'N' forever
+            Using cleanCmd As New HanaCommand($"UPDATE ""{HANA_SCHEMA}"".""CASH_DISCOUNT"" SET ""Processed"" = '0' WHERE ""Processed"" = 'N' AND ""CD_Amount"" = 0", conn)
+                Dim updatedZeros As Integer = cleanCmd.ExecuteNonQuery()
+                If updatedZeros > 0 Then
+                    Console.WriteLine($"Automatically marked {updatedZeros} zero-amount rows as Processed = '0'")
+                End If
+            End Using
+
+            ' 2. Fetch Unprocessed Rows for invoicing
             Dim fetchCmd As New HanaCommand($"SELECT * FROM ""{HANA_SCHEMA}"".""CASH_DISCOUNT"" WHERE ""Processed"" = 'N' AND ""CD_Amount"" != 0", conn)
             Dim dt As New DataTable()
             Using da As New HanaDataAdapter(fetchCmd)
