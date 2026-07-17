@@ -119,7 +119,7 @@ Module CD_Voucher_Poster
             End Using
 
             ' 2. Fetch Unprocessed Rows for invoicing
-            Dim fetchCmd As New HanaCommand($"SELECT * FROM ""{HANA_SCHEMA}"".""CASH_DISCOUNT"" WHERE ""Processed"" = 'N' AND ""CD_Amount"" != 0", conn)
+            Dim fetchCmd As New HanaCommand($"SELECT * FROM ""{HANA_SCHEMA}"".""CASH_DISCOUNT"" WHERE ""Processed"" <> 'Y' AND ""Processed"" <> '0' AND ""CD_Amount"" != 0", conn)
             Dim dt As New DataTable()
             Using da As New HanaDataAdapter(fetchCmd)
                 da.Fill(dt)
