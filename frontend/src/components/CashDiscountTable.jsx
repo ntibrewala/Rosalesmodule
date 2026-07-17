@@ -16,7 +16,9 @@ const COLUMNS = [
   { key: 'EPI_Amount', label: 'EPI Amount', type: 'number' },
   { key: 'Balance', label: 'Balance', type: 'number' },
   { key: 'Net_Amount', label: 'Net Amount', type: 'number', bold: true },
-  { key: 'Processed', label: 'Processed', align: 'center' }
+  { key: 'Processed', label: 'Processed', align: 'center' },
+  { key: 'Document_Number', label: 'Doc No', align: 'center' },
+  { key: 'Error_Message', label: 'Error' }
 ]
 
 export default function CashDiscountTable({ data, total, limit, offset, loading, onRefresh, readOnly }) {
@@ -71,8 +73,12 @@ export default function CashDiscountTable({ data, total, limit, offset, loading,
   }
 
   const visibleData = useMemo(() => {
-    // 1. Remove posted rows
-    let d = (data || []).filter(row => !hiddenRows[row.TransID || row.DCP_No])
+    // 1. Remove posted rows and successful rows
+    let d = (data || []).filter(row => {
+      if (hiddenRows[row.TransID || row.DCP_No]) return false;
+      if (row.Processed === 'Y' || row.Document_Number) return false;
+      return true;
+    })
     
     // 2. Filter based on inputs
     d = d.filter(row => {
