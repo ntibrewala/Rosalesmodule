@@ -9,6 +9,7 @@ const DiscountPayable = () => {
   const [end, setEnd] = useState("");
   const [data, setData] = useState([]);
   const [loading, setLoading] = useState(false);
+  const [hiddenRows, setHiddenRows] = useState({});
 
   const fetchData = async () => {
     if (!start || !end) return;
@@ -16,6 +17,7 @@ const DiscountPayable = () => {
     try {
       const resp = await getDiscountPayable(start, end);
       setData(resp.data.data || []);
+      setHiddenRows({});
     } catch (e) {
       Toast.error(e.response?.data?.error || "Failed to load data");
     }
@@ -32,6 +34,7 @@ const DiscountPayable = () => {
     try {
       await postDiscountPayable(payload);
       Toast.success(`Interest posted for ${bp.bpCode}`);
+      setHiddenRows(prev => ({ ...prev, [bp.bpCode]: true }));
     } catch (e) {
       const msg = e.response?.data?.error || "Post failed";
       Toast.error(msg);
@@ -70,20 +73,20 @@ const DiscountPayable = () => {
             <th>Action</th>
           </tr>
         </thead>
-        <tbody>
-          {data.map((row) => (
-            <tr key={row.bpCode}>
-              <td>{row.bpCode}</td>
-              <td>{row.cardName}</td>
-              <td>{row.totalInterest.toFixed(2)}</td>
-              <td>
-                <button onClick={() => handlePost(row)} className="post-btn">
-                  Post
-                </button>
-              </td>
-            </tr>
-          ))}
-        </tbody>
+          <tbody>
+            {data.filter(row => !hiddenRows[row.bpCode]).map((row, idx) => (
+              <tr key={idx}>
+                <td>{row.bpCode}</td>
+                <td>{row.bpName}</td>
+                <td style={{ textAlign: "right" }}>{Number(row.totalInterest).toFixed(2)}</td>
+                <td style={{ textAlign: "center" }}>
+                  <button onClick={() => handlePost(row)} className="post-btn">
+                    Post
+                  </button>
+                </td>
+              </tr>
+            ))}
+          </tbody>
       </table>
       )}
     </div>

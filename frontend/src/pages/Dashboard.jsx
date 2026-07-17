@@ -8,7 +8,7 @@ import MOUCompareTable from '../components/MOUCompareTable'
 import DiscountPayable from './DiscountPayable'
 import InterestPosted from './InterestPosted'
 import CashDiscountTable from '../components/CashDiscountTable'
-import { getSales, getMOU, getCashDiscount } from '../api'
+import { getSales, getMOU, getCashDiscount, getCashDiscountPosted } from '../api'
 
 const PAGE_SIZE = 200
 
@@ -37,6 +37,8 @@ export default function Dashboard() {
   const [cashDiscData, setCashDiscData]       = useState([])
   const [cashDiscColumns, setCashDiscColumns] = useState([])
   const [cashDiscLoading, setCashDiscLoading] = useState(false)
+  const [cashDiscPostedData, setCashDiscPostedData] = useState([])
+  const [cashDiscPostedLoading, setCashDiscPostedLoading] = useState(false)
 
   const fetchSales = useCallback(async (newOffset = 0) => {
     setLoading(true)
@@ -102,6 +104,22 @@ export default function Dashboard() {
     }
   }, [dateFilters])
 
+  const fetchCashDiscountPosted = useCallback(async () => {
+    setCashDiscPostedLoading(true)
+    setError('')
+    try {
+      const res = await getCashDiscountPosted({ 
+        startDate: dateFilters.start_date, 
+        endDate: dateFilters.end_date 
+      })
+      setCashDiscPostedData(res.data.data || [])
+    } catch (err) {
+      setError("Failed to load Cash Discount Posted data")
+    } finally {
+      setCashDiscPostedLoading(false)
+    }
+  }, [dateFilters])
+
   useEffect(() => {
     if ((activeTab === 'mou' || activeTab === 'mou_compare') && !mouFetched && !mouLoading) {
       fetchMOU(0)
@@ -122,6 +140,7 @@ export default function Dashboard() {
               {activeTab === 'discount' && 'Interest Receivable'}
               {activeTab === 'posted' && 'Interest Posted'}
               {activeTab === 'cash_discount' && 'Cash Discount'}
+              {activeTab === 'cash_discount_posted' && 'Cash Discount Posted'}
             </h1>
           </div>
           
@@ -168,6 +187,13 @@ export default function Dashboard() {
              >
                Cash Discount
              </button>
+             <button 
+               className={`btn ${activeTab === 'cash_discount_posted' ? 'btn-primary' : 'btn-ghost'}`} 
+               onClick={() => { setActiveTab('cash_discount_posted'); setError(''); }}
+               style={{ padding: '0.4rem 1rem' }}
+             >
+               Cash Discount Posted
+             </button>
           </div>
         </div>
 
@@ -189,9 +215,31 @@ export default function Dashboard() {
             </div>
             <CashDiscountTable 
               data={cashDiscData} 
-              columns={cashDiscColumns} 
+              columns={cashDiscColumns}
               loading={cashDiscLoading} 
               onRefresh={fetchCashDiscount}
+            />
+          </>
+        )}
+
+        {activeTab === 'cash_discount_posted' && (
+          <>
+            <DateFilter onChange={setDateFilters} />
+            {error && (
+              <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: '1rem', gap: '0.75rem', alignItems: 'center' }}>
+                <span style={{ color: 'var(--error)', fontSize: '0.8rem' }}>⚠ {error}</span>
+              </div>
+            )}
+            <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: '1rem' }}>
+              <button className="btn btn-primary" onClick={fetchCashDiscountPosted} disabled={cashDiscPostedLoading}>
+                {cashDiscPostedLoading ? 'Loading...' : '🔍 Fetch Posted Records'}
+              </button>
+            </div>
+            <CashDiscountTable 
+              data={cashDiscPostedData} 
+              loading={cashDiscPostedLoading}
+              onRefresh={fetchCashDiscountPosted}
+              readOnly={true}
             />
           </>
         )}

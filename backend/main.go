@@ -35,6 +35,7 @@ func main() {
 	mux.HandleFunc("/api/interest/posted", JWTMiddleware(HandleGetInterestPosted))
 	mux.HandleFunc("/api/cash-discount", JWTMiddleware(HandleCashDiscount))
 	mux.HandleFunc("/api/cash-discount/post", JWTMiddleware(HandlePostCashDiscount))
+	mux.HandleFunc("/api/cash-discount-posted", JWTMiddleware(HandleGetCashDiscountPosted))
 
 	// Protected — user preferences
 	mux.HandleFunc("/api/prefs", JWTMiddleware(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {

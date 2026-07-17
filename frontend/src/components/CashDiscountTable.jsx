@@ -1,8 +1,10 @@
 import React, { useState } from 'react'
 import { postCashDiscount } from '../api'
 
-export default function CashDiscountTable({ data, total, limit, offset, loading, onRefresh }) {
+export default function CashDiscountTable({ data, total, limit, offset, loading, onRefresh, readOnly }) {
   const [postingRows, setPostingRows] = useState({})
+  const [hiddenRows, setHiddenRows] = useState({})
+  const [showZeroCD, setShowZeroCD] = useState(false)
 
   const handlePost = async (row) => {
     const rowId = row.TransID || row.DCP_No
@@ -17,6 +19,7 @@ export default function CashDiscountTable({ data, total, limit, offset, loading,
         Prod_Desc: row.Prod_Desc || '',
         Quantity: row.Quantity || 0,
         Due_Date: row.Due_Date || '',
+        New_Due_Date: row.New_Due_Date || '',
         RectDate: row.RectDate || '',
         CD: row.CD || 0,
         EPI: row.EPI || 0,
@@ -27,12 +30,17 @@ export default function CashDiscountTable({ data, total, limit, offset, loading,
         Net_Amount: row.Net_Amount || 0
       })
       alert(`Successfully posted for ${row.SoldTo}`)
+      setHiddenRows(prev => ({ ...prev, [rowId]: true }))
     } catch (err) {
       alert(`Failed to post: ${err.response?.data?.error || err.message}`)
     } finally {
       setPostingRows(prev => ({ ...prev, [rowId]: false }))
     }
   }
+
+  const unhiddenData = (data || []).filter(row => !hiddenRows[row.TransID || row.DCP_No])
+  const visibleData = showZeroCD ? unhiddenData : unhiddenData.filter(row => (row.CD_Amount || 0) !== 0)
+
   if (loading) {
     return (
       <div className="table-container" style={{ textAlign: 'center', padding: '3rem' }}>
@@ -50,88 +58,135 @@ export default function CashDiscountTable({ data, total, limit, offset, loading,
     )
   }
 
-  // Format numbers to 2 decimal places if applicable
-  const formatCell = (key, val) => {
-    if (val === null || val === undefined) return ''
-    
-    // Check if it's a date column
-    if (['DCP_DATE', 'Due_Date', 'RectDate'].includes(key)) {
-      if (!val) return ''
-      try {
-        const d = new Date(val)
-        if (!isNaN(d)) {
-          return d.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })
-        }
-      } catch (e) {
-        return val
-      }
-    }
-
-    if (typeof val === 'number') {
-      return val.toLocaleString('en-IN', { maximumFractionDigits: 2, minimumFractionDigits: 2 })
-    }
-    return val
+  const formatNumber = (val) => {
+    if (val === null || val === undefined) return '0.00'
+    return Number(val).toLocaleString('en-IN', { maximumFractionDigits: 2, minimumFractionDigits: 2 })
   }
 
-  const displayCols = [
-    { key: 'SoldTo', label: 'Customer Name' },
-    { key: 'DCP_No', label: 'DCPI Number' },
-    { key: 'DCP_DATE', label: 'Date' },
-    { key: 'Prod_Desc', label: 'Product Desc' },
-    { key: 'Quantity', label: 'Quantity' },
-    { key: 'Due_Date', label: 'Due Date' },
-    { key: 'RectDate', label: 'Rect Date' },
-    { key: 'CD', label: 'CD Rate' },
-    { key: 'EPI', label: 'EPI Rate' },
-    { key: 'EPI_Days', label: 'EPI Days' },
-    { key: 'CD_Amount', label: 'CD Amount' },
-    { key: 'EPI_Amount', label: 'EPI Amount' },
-    { key: 'Balance', label: 'Balance' },
-    { key: 'Net_Amount', label: 'Net Amount' }
-  ]
+  const formatDate = (val) => {
+    if (!val) return ''
+    const d = new Date(val)
+    return !isNaN(d) ? d.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }) : val
+  }
 
   return (
     <div className="table-container">
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
         <h3 style={{ margin: 0 }}>Cash Discount Data</h3>
-        <button className="btn btn-ghost" onClick={onRefresh}>↻ Refresh</button>
+        <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
+          {!readOnly && (
+            <label style={{ display: 'flex', alignItems: 'center', cursor: 'pointer', fontSize: '0.9rem', color: 'var(--text-secondary)' }}>
+              <input 
+                type="checkbox" 
+                checked={showZeroCD} 
+                onChange={(e) => setShowZeroCD(e.target.checked)} 
+                style={{ marginRight: '0.5rem' }}
+              />
+              Show 0 CD Records
+            </label>
+          )}
+          <button className="btn btn-ghost" onClick={onRefresh}>↻ Refresh</button>
+        </div>
       </div>
       <div style={{ overflowX: 'auto' }}>
         <table className="data-table">
           <thead>
             <tr>
-              {displayCols.map((col, idx) => (
-                <th key={idx}>{col.label}</th>
-              ))}
-              <th>Action</th>
+              <th>DCP No</th>
+              <th>DCP Date</th>
+              <th>Order No</th>
+              <th>Order Date</th>
+              <th>Trans ID</th>
+              <th>Sold To Code</th>
+              <th>Sold To Name</th>
+              <th>Division</th>
+              <th>Product</th>
+              <th>Prod Desc</th>
+              <th>Quantity</th>
+              <th>Truck No</th>
+              <th>Transport Name</th>
+              <th>Amount</th>
+              <th>Tax</th>
+              <th>Total Amt</th>
+              <th>Retail Invoice</th>
+              <th>Ship To</th>
+              <th>Ship To Name</th>
+              <th>CD Applicable</th>
+              <th>Due Date</th>
+              <th>New Due Date</th>
+              <th>Rect Date</th>
+              <th>CD Rate</th>
+              <th>EPI Rate</th>
+              <th>Grace Amt</th>
+              <th>EPI Days</th>
+              <th>CD Amount</th>
+              <th>EPI Amount</th>
+              <th>Balance</th>
+              <th>Net Amount</th>
+              <th>Processed</th>
+              {!readOnly && <th>Action</th>}
             </tr>
           </thead>
           <tbody>
-            {data.map((row, rowIdx) => {
+            {visibleData.map((row, idx) => {
               const rowId = row.TransID || row.DCP_No
+              const isPosting = postingRows[rowId]
+              const isProcessed = hiddenRows[rowId]
+              
               return (
-                <tr key={rowIdx}>
-                  {displayCols.map((col, colIdx) => (
-                    <td key={colIdx}>{formatCell(col.key, row[col.key])}</td>
-                  ))}
-                  <td>
+                <tr key={idx}>
+                  <td>{row.DCP_No}</td>
+                  <td>{formatDate(row.DCP_DATE)}</td>
+                  <td>{row.Order_No}</td>
+                  <td>{formatDate(row.Order_Date)}</td>
+                  <td>{row.TransID}</td>
+                  <td>{row.SoldToCode}</td>
+                  <td>{row.SoldTo}</td>
+                  <td>{row.Division}</td>
+                  <td>{row.Product}</td>
+                  <td>{row.Prod_Desc}</td>
+                  <td style={{ textAlign: 'right' }}>{formatNumber(row.Quantity)}</td>
+                  <td>{row.Truck_No}</td>
+                  <td>{row.Transport_Name}</td>
+                  <td style={{ textAlign: 'right' }}>{formatNumber(row.Amount)}</td>
+                  <td style={{ textAlign: 'right' }}>{formatNumber(row.Tax)}</td>
+                  <td style={{ textAlign: 'right' }}>{formatNumber(row.TotalAmt)}</td>
+                  <td>{row.Retail_Invoice}</td>
+                  <td>{row.ShipTo}</td>
+                  <td>{row.ShipTo_Name}</td>
+                  <td style={{ textAlign: 'center' }}>{row.CD_Applicable}</td>
+                  <td>{formatDate(row.Due_Date)}</td>
+                  <td>{formatDate(row.New_Due_Date)}</td>
+                  <td>{formatDate(row.RectDate)}</td>
+                  <td style={{ textAlign: 'right' }}>{formatNumber(row.CD)}</td>
+                  <td style={{ textAlign: 'right' }}>{formatNumber(row.EPI)}</td>
+                  <td style={{ textAlign: 'right' }}>{formatNumber(row.Grace_Amount)}</td>
+                  <td style={{ textAlign: 'right' }}>{row.EPI_Days}</td>
+                  <td style={{ textAlign: 'right' }}>{formatNumber(row.CD_Amount)}</td>
+                  <td style={{ textAlign: 'right' }}>{formatNumber(row.EPI_Amount)}</td>
+                  <td style={{ textAlign: 'right' }}>{formatNumber(row.Balance)}</td>
+                  <td style={{ textAlign: 'right', fontWeight: 'bold' }}>{formatNumber(row.Net_Amount)}</td>
+                  <td style={{ textAlign: 'center' }}>{isProcessed ? "Yes" : (row.Processed === 'Y' ? "Yes" : "No")}</td>
+                  {!readOnly && (
+                  <td style={{ textAlign: 'center' }}>
                     <button 
-                      className="btn btn-primary"
-                      onClick={() => handlePost(row)}
-                      disabled={postingRows[rowId]}
+                      className="btn btn-primary" 
                       style={{ padding: '0.25rem 0.5rem', fontSize: '0.875rem' }}
+                      onClick={() => handlePost(row)}
+                      disabled={isPosting || isProcessed || (row.CD_Amount || 0) === 0}
                     >
-                      {postingRows[rowId] ? 'Posting...' : 'Post'}
+                      {isPosting ? 'Posting...' : 'Post'}
                     </button>
                   </td>
+                  )}
                 </tr>
               )
             })}
           </tbody>
         </table>
       </div>
-      <div className="pagination" style={{ marginTop: '1rem', display: 'flex', justifyContent: 'space-between' }}>
-        <span>Showing {offset + 1} to {Math.min(offset + limit, total)} of {total} records</span>
+      <div className="pagination" style={{ marginTop: '1rem', display: 'flex', justifyContent: 'space-between', color: 'var(--text-secondary)', fontSize: '0.9rem' }}>
+        <span>Showing {(offset || 0) + 1} to {Math.min((offset || 0) + (limit || visibleData.length), total !== undefined ? total : visibleData.length)} of {total !== undefined ? total : visibleData.length} records</span>
       </div>
     </div>
   )

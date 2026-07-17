@@ -36,7 +36,7 @@ func LoadConfig() {
 		port,
 	)
 	AppConfig.JWTSecret = getEnv("JWT_SECRET", "tec_sales_jwt_secret_2025")
-	AppConfig.Port = getEnv("PORT", "5002")
+	AppConfig.Port = getEnv("PORT", "6060")
 }
 
 func getEnv(key, fallback string) string {
