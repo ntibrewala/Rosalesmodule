@@ -1,4 +1,4 @@
-import React, { useState } from 'react'
+import React, { useState, useEffect, useRef, useMemo } from 'react'
 import { postCashDiscount } from '../api'
 
 const COLUMNS = [
@@ -24,6 +24,19 @@ export default function CashDiscountTable({ data, total, limit, offset, loading,
   const [hiddenRows, setHiddenRows] = useState({})
   const [sortConfig, setSortConfig] = useState({ key: 'SoldTo', direction: 'asc' })
   const [filters, setFilters] = useState({})
+  
+  // Header Dropdown tracking
+  const [activeMenu, setActiveMenu] = useState(null)
+  const menuRef = useRef(null)
+
+  // Click outside listener for menu
+  useEffect(() => {
+    const handleClickOutside = (e) => {
+      if (menuRef.current && !menuRef.current.contains(e.target)) setActiveMenu(null)
+    }
+    if (activeMenu) document.addEventListener('mousedown', handleClickOutside)
+    return () => document.removeEventListener('mousedown', handleClickOutside)
+  }, [activeMenu])
 
   const handlePost = async (row) => {
     const rowId = row.TransID || row.DCP_No
@@ -57,58 +70,48 @@ export default function CashDiscountTable({ data, total, limit, offset, loading,
     }
   }
 
-  const handleSort = (key) => {
-    let direction = 'asc'
-    if (sortConfig.key === key && sortConfig.direction === 'asc') {
-      direction = 'desc'
-    }
-    setSortConfig({ key, direction })
-  }
-
-  const handleFilterChange = (key, value) => {
-    setFilters(prev => ({ ...prev, [key]: value }))
-  }
-
-  // 1. Remove posted and 0 CD rows permanently
-  const unhiddenData = (data || []).filter(row => !hiddenRows[row.TransID || row.DCP_No])
-  let visibleData = unhiddenData.filter(row => (row.CD_Amount || 0) !== 0)
-
-  // 2. Filter based on inputs
-  visibleData = visibleData.filter(row => {
-    for (const key in filters) {
-      if (filters[key]) {
-        let rowValue = String(row[key] || '').toLowerCase()
-        if (key === 'Processed') {
-           const isProcessed = hiddenRows[row.TransID || row.DCP_No] ? "yes" : (row.Processed === 'Y' ? "yes" : "no")
-           rowValue = isProcessed
-        }
-        if (!rowValue.includes(filters[key].toLowerCase())) {
-          return false
+  const visibleData = useMemo(() => {
+    // 1. Remove posted rows
+    let d = (data || []).filter(row => !hiddenRows[row.TransID || row.DCP_No])
+    
+    // 2. Filter based on inputs
+    d = d.filter(row => {
+      for (const key in filters) {
+        if (filters[key]) {
+          let rowValue = String(row[key] || '').toLowerCase()
+          if (key === 'Processed') {
+            const isProcessed = hiddenRows[row.TransID || row.DCP_No] ? "yes" : (row.Processed === 'Y' ? "yes" : "no")
+            rowValue = isProcessed
+          }
+          if (!rowValue.includes(filters[key].toLowerCase())) {
+            return false
+          }
         }
       }
-    }
-    return true
-  })
+      return true
+    })
 
-  // 3. Sort
-  visibleData = [...visibleData].sort((a, b) => {
-    const aVal = a[sortConfig.key] || ''
-    const bVal = b[sortConfig.key] || ''
-    
-    if (sortConfig.key === 'DCP_DATE' || sortConfig.key === 'Due_Date' || sortConfig.key === 'RectDate') {
-       const dateA = new Date(aVal)
-       const dateB = new Date(bVal)
-       return sortConfig.direction === 'asc' ? dateA - dateB : dateB - dateA
-    } else if (!isNaN(Number(aVal)) && !isNaN(Number(bVal)) && aVal !== '' && bVal !== '') {
-       return sortConfig.direction === 'asc' ? Number(aVal) - Number(bVal) : Number(bVal) - Number(aVal)
-    } else {
-       const strA = String(aVal).toLowerCase()
-       const strB = String(bVal).toLowerCase()
-       if (strA < strB) return sortConfig.direction === 'asc' ? -1 : 1
-       if (strA > strB) return sortConfig.direction === 'asc' ? 1 : -1
-       return 0
-    }
-  })
+    // 3. Sort
+    d.sort((a, b) => {
+      const aVal = a[sortConfig.key] || ''
+      const bVal = b[sortConfig.key] || ''
+      
+      if (sortConfig.key === 'DCP_DATE' || sortConfig.key === 'Due_Date' || sortConfig.key === 'RectDate') {
+         const dateA = new Date(aVal)
+         const dateB = new Date(bVal)
+         return sortConfig.direction === 'asc' ? dateA - dateB : dateB - dateA
+      } else if (!isNaN(Number(aVal)) && !isNaN(Number(bVal)) && aVal !== '' && bVal !== '') {
+         return sortConfig.direction === 'asc' ? Number(aVal) - Number(bVal) : Number(bVal) - Number(aVal)
+      } else {
+         const strA = String(aVal).toLowerCase()
+         const strB = String(bVal).toLowerCase()
+         if (strA < strB) return sortConfig.direction === 'asc' ? -1 : 1
+         if (strA > strB) return sortConfig.direction === 'asc' ? 1 : -1
+         return 0
+      }
+    })
+    return d
+  }, [data, hiddenRows, filters, sortConfig])
 
   if (loading) {
     return (
@@ -146,40 +149,50 @@ export default function CashDiscountTable({ data, total, limit, offset, loading,
           <button className="btn btn-ghost" onClick={onRefresh}>↻ Refresh</button>
         </div>
       </div>
-      <div style={{ overflowX: 'auto', paddingBottom: '2rem' }}>
+      <div style={{ overflowX: 'auto', paddingBottom: '2rem', minHeight: '300px' }}>
         <table className="data-table">
           <thead>
             <tr>
               {COLUMNS.map(col => (
-                <th key={col.key} style={{ minWidth: col.type === 'date' ? '120px' : 'auto', verticalAlign: 'top' }}>
+                <th key={col.key} style={{ minWidth: col.type === 'date' ? '120px' : 'auto', verticalAlign: 'top', position: 'relative' }}>
                   <div 
-                    onClick={() => handleSort(col.key)} 
-                    style={{ cursor: 'pointer', userSelect: 'none', display: 'flex', alignItems: 'center', justifyContent: col.type === 'number' ? 'flex-end' : (col.align || 'flex-start') }}
+                    className="th-content"
+                    onClick={() => setActiveMenu(activeMenu === col.key ? null : col.key)} 
+                    style={{ cursor: 'pointer', userSelect: 'none', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}
                   >
-                    {col.label}
-                    {sortConfig.key === col.key && (
-                      <span style={{ marginLeft: '4px' }}>
-                        {sortConfig.direction === 'asc' ? '↑' : '↓'}
-                      </span>
-                    )}
+                    <span style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                      {col.label}
+                      {sortConfig.key === col.key && (
+                        <span>
+                          {sortConfig.direction === 'asc' ? '↑' : '↓'}
+                        </span>
+                      )}
+                    </span>
+                    <span style={{ opacity: filters[col.key] ? 1 : 0.3, marginLeft: '8px' }}>⋮</span>
                   </div>
-                  <input 
-                    type="text" 
-                    placeholder="Filter..." 
-                    onChange={e => handleFilterChange(col.key, e.target.value)} 
-                    style={{ 
-                      width: '100%', 
-                      marginTop: '6px', 
-                      padding: '4px', 
-                      fontSize: '0.75rem', 
-                      fontWeight: 'normal',
-                      border: '1px solid #ccc',
-                      borderRadius: '3px',
-                      background: 'white',
-                      color: 'black',
-                      boxSizing: 'border-box'
-                    }} 
-                  />
+
+                  {activeMenu === col.key && (
+                    <div ref={menuRef} className="col-menu">
+                      <button onClick={(e) => { e.stopPropagation(); setSortConfig({ key: col.key, direction: 'asc' }); setActiveMenu(null) }}>↑ Sort Ascending</button>
+                      <button onClick={(e) => { e.stopPropagation(); setSortConfig({ key: col.key, direction: 'desc' }); setActiveMenu(null) }}>↓ Sort Descending</button>
+                      <button style={{ color: 'var(--primary)' }} onClick={(e) => { 
+                        e.stopPropagation()
+                        setSortConfig({ key: 'SoldTo', direction: 'asc' })
+                        setFilters(prev => ({...prev, [col.key]: ''}))
+                        setActiveMenu(null) 
+                      }}>✕ Clear Filter & Sort</button>
+                      
+                      <div className="col-menu-divider" />
+                      <input 
+                        type="text" 
+                        className="col-menu-input" 
+                        placeholder="Filter column..." 
+                        value={filters[col.key] || ''}
+                        onClick={e => e.stopPropagation()}
+                        onChange={e => setFilters(p => ({...p, [col.key]: e.target.value}))}
+                      />
+                    </div>
+                  )}
                 </th>
               ))}
               {!readOnly && <th style={{ verticalAlign: 'top' }}>Action</th>}
@@ -221,7 +234,7 @@ export default function CashDiscountTable({ data, total, limit, offset, loading,
                       className="btn btn-primary" 
                       style={{ padding: '0.25rem 0.5rem', fontSize: '0.875rem' }}
                       onClick={() => handlePost(row)}
-                      disabled={isPosting || isProcessed || (row.CD_Amount || 0) === 0}
+                      disabled={isPosting || isProcessed}
                     >
                       {isPosting ? 'Posting...' : 'Post'}
                     </button>
