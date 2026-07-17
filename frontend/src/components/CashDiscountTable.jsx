@@ -93,22 +93,42 @@ export default function CashDiscountTable({ data, total, limit, offset, loading,
 
     // 3. Sort
     d.sort((a, b) => {
+      if (!sortConfig.key) return 0;
+      
       const aVal = a[sortConfig.key] || ''
       const bVal = b[sortConfig.key] || ''
       
+      let res = 0;
       if (sortConfig.key === 'DCP_DATE' || sortConfig.key === 'Due_Date' || sortConfig.key === 'RectDate') {
          const dateA = new Date(aVal)
          const dateB = new Date(bVal)
-         return sortConfig.direction === 'asc' ? dateA - dateB : dateB - dateA
+         res = dateA - dateB
       } else if (!isNaN(Number(aVal)) && !isNaN(Number(bVal)) && aVal !== '' && bVal !== '') {
-         return sortConfig.direction === 'asc' ? Number(aVal) - Number(bVal) : Number(bVal) - Number(aVal)
+         res = Number(aVal) - Number(bVal)
       } else {
          const strA = String(aVal).toLowerCase()
          const strB = String(bVal).toLowerCase()
-         if (strA < strB) return sortConfig.direction === 'asc' ? -1 : 1
-         if (strA > strB) return sortConfig.direction === 'asc' ? 1 : -1
-         return 0
+         if (strA < strB) res = -1
+         else if (strA > strB) res = 1
       }
+      
+      if (sortConfig.direction === 'desc') res = -res;
+      
+      // Stable secondary sorting
+      if (res === 0) {
+        if (sortConfig.key !== 'SoldTo') {
+           const nameA = String(a.SoldTo || '').toLowerCase();
+           const nameB = String(b.SoldTo || '').toLowerCase();
+           if (nameA < nameB) res = -1;
+           else if (nameA > nameB) res = 1;
+        }
+        if (res === 0 && sortConfig.key !== 'DCP_DATE') {
+           const dateA = new Date(a.DCP_DATE || 0)
+           const dateB = new Date(b.DCP_DATE || 0)
+           res = dateA - dateB
+        }
+      }
+      return res;
     })
     return d
   }, [data, hiddenRows, filters, sortConfig])
