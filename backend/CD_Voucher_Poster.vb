@@ -45,8 +45,6 @@ Module CD_Voucher_Poster
             LogoutSL().Wait()
         End Try
         
-        Console.WriteLine("Press any key to exit...")
-        Console.ReadKey()
     End Sub
 
     Private Sub InitializeHttpClient()
