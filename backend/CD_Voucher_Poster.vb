@@ -144,7 +144,7 @@ Module CD_Voucher_Poster
 
                 Try
                     ' 1. Generate CSV Attachment Locally
-                    Dim fileName As String = $"CD_{dcpNo}_{dcpDateStr}.csv"
+                    Dim fileName As String = $"CD_{soldToCode}_{dcpNo}.csv"
                     Dim filePath As String = Path.Combine(ATTACHMENT_FOLDER, fileName)
                     GenerateCSV(filePath, dt, row)
                     Console.WriteLine($"CSV file generated at: {filePath}")
