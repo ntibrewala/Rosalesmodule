@@ -86,7 +86,7 @@ export default function CashDiscountTable({ data, total, limit, offset, loading,
         if (filters[key]) {
           let rowValue = String(row[key] || '').toLowerCase()
           if (key === 'Processed') {
-            const isProcessed = hiddenRows[row.TransID || row.DCP_No] ? "yes" : (row.Processed === 'Y' ? "yes" : "no")
+            const isProcessed = hiddenRows[row.TransID || row.DCP_No] ? "yes" : (row.Processed === '0' ? "0" : (row.Processed === 'Y' ? "yes" : "no"))
             rowValue = isProcessed
           }
           if (!rowValue.includes(filters[key].toLowerCase())) {
@@ -235,7 +235,7 @@ export default function CashDiscountTable({ data, total, limit, offset, loading,
                   {COLUMNS.map(col => {
                     let cellValue = row[col.key]
                     if (col.key === 'Processed') {
-                      cellValue = isProcessed ? "Yes" : "No"
+                      cellValue = row.Processed === '0' ? "0" : (isProcessed ? "Yes" : "No")
                     } else if (col.type === 'date') {
                       cellValue = formatDate(cellValue)
                     } else if (col.type === 'number') {
