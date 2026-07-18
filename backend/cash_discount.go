@@ -48,7 +48,7 @@ func HandleCashDiscount(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	query := `SELECT t.* FROM "RAGHAV_LIVE"."FN_TEC_CD"(?, ?) t LEFT JOIN "RAGHAV_LIVE"."CASH_DISCOUNT" c ON t."DCP_No" = c."DCP_No" WHERE c."DCP_No" IS NULL`
+	query := `SELECT t.* FROM "RAGHAV_LIVE"."FN_TEC_CD"(?, ?) t LEFT JOIN "RAGHAV_LIVE"."CASH_DISCOUNT" c ON t."TransID" = c."TransID" WHERE c."TransID" IS NULL`
 	rows, err := db.Query(query, start, end)
 	if err != nil {
 		log.Printf("Query Error: %v\n", err)
