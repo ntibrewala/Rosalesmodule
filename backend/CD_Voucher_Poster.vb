@@ -111,7 +111,7 @@ Module CD_Voucher_Poster
             conn.Open()
 
             ' 1. Automatically update zero CD_Amount rows to '0' so they don't sit as 'N' forever
-            Using cleanCmd As New HanaCommand($"UPDATE ""{HANA_SCHEMA}"".""CASH_DISCOUNT"" SET ""Processed"" = '0' WHERE ""Processed"" = 'N' AND ""CD_Amount"" = 0", conn)
+            Using cleanCmd As New HanaCommand($"UPDATE ""{HANA_SCHEMA}"".""CASH_DISCOUNT"" SET ""Processed"" = '0' WHERE ""Processed"" = 'N' AND (""CD_Amount"" = 0 OR ""CD_Amount"" = '0' OR ""CD_Amount"" = '0.00' OR ""CD_Amount"" IS NULL)", conn)
                 Dim updatedZeros As Integer = cleanCmd.ExecuteNonQuery()
                 If updatedZeros > 0 Then
                     Console.WriteLine($"Automatically marked {updatedZeros} zero-amount rows as Processed = '0'")
